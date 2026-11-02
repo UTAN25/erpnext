@@ -340,7 +340,8 @@ frappe.ui.form.on("Material Request", {
 				];
 
 				if (overwrite_warehouse) {
-					allow_to_change_fields.push("description");
+					// the item changed: its manufacturer details replace the previous item's
+					allow_to_change_fields.push("description", "manufacturer", "manufacturer_part_no");
 				}
 
 				if (!r.exc) {
