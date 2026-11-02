@@ -60,6 +60,7 @@ class BuyingController(SubcontractingController):
 			self.supplier_name = frappe.db.get_value("Supplier", self.supplier, "supplier_name")
 
 		self.validate_items()
+		self.validate_manufacturer_part_no()
 		validate_item_uoms(self.get("items"))
 		self.set_qty_as_per_stock_uom()
 		self.validate_stock_or_nonstock_items()
@@ -1632,6 +1633,31 @@ class BuyingController(SubcontractingController):
 			return
 
 		validate_item_type(self, "is_purchase_item", "purchase")
+
+	def validate_manufacturer_part_no(self):
+		# a row's manufacturer part no must be one of its item's Item Manufacturer records,
+		# so a wrong one is not copied into the documents made from this one
+		for d in self.get("items"):
+			if not (d.get("manufacturer") and d.get("manufacturer_part_no")):
+				continue
+
+			if not frappe.db.exists(
+				"Item Manufacturer",
+				{
+					"item_code": d.item_code,
+					"manufacturer": d.manufacturer,
+					"manufacturer_part_no": d.manufacturer_part_no,
+				},
+			):
+				frappe.throw(
+					_("Row #{0}: Part Number {1} of {2} does not belong to Item {3}").format(
+						d.idx,
+						frappe.bold(d.manufacturer_part_no),
+						frappe.bold(d.manufacturer),
+						frappe.bold(d.item_code),
+					),
+					title=_("Invalid Part Number"),
+				)
 
 
 def get_asset_item_details(asset_items):

@@ -2613,6 +2613,33 @@ class TestPurchaseOrder(ERPNextTestSuite):
 
 		self.assertEqual(frappe.db.get_value("Purchase Order Item", po.items[0].name, "returned_qty"), 3)
 
+	def test_manufacturer_part_no_must_belong_to_the_item(self):
+		manufacturer = "_Test PO Maker"
+		if not frappe.db.exists("Manufacturer", manufacturer):
+			frappe.get_doc({"doctype": "Manufacturer", "short_name": manufacturer}).insert()
+
+		item_a = make_item(properties={"is_stock_item": 1}).name
+		item_b = make_item(properties={"is_stock_item": 1}).name
+		for item_code, part_no in ((item_a, "_PO-A-1"), (item_b, "_PO-B-1")):
+			frappe.get_doc(
+				{
+					"doctype": "Item Manufacturer",
+					"item_code": item_code,
+					"manufacturer": manufacturer,
+					"manufacturer_part_no": part_no,
+				}
+			).insert()
+
+		# item B with the part number of item A
+		po = create_purchase_order(item_code=item_b, do_not_save=True)
+		po.items[0].manufacturer = manufacturer
+		po.items[0].manufacturer_part_no = "_PO-A-1"
+		self.assertRaises(frappe.ValidationError, po.save)
+
+		po.items[0].manufacturer_part_no = "_PO-B-1"
+		po.save()
+		self.assertEqual(po.items[0].manufacturer_part_no, "_PO-B-1")
+
 
 def create_po_for_sc_testing():
 	service_items = [
